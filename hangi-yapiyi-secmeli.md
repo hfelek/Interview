@@ -145,9 +145,63 @@ Then say out loud: *which structure, why, time/space, edge cases.*
 ## 11. "Max/min of the last K items"
 **Signals:** sliding window maximum/minimum, "highest reading in the last second".
 **Use:** **monotonic deque** (stores indices; values kept in decreasing order for max). Front = answer. Drop from the back while the new value is bigger; drop from the front when the index leaves the window. In C the deque is a ring buffer of indices.
+
+**The key idea in plain words.** If the window holds `[3, 5]` (3 arrived first), then **3 can never be the answer again**: 5 is bigger *and* it arrived later, so it also leaves the window later. So when a new value arrives, throw away every older value that is smaller or equal. What remains is always sorted big → small, and the front is the window maximum.
+
+**Why a deque?** You remove from **two ends**: the back (to discard smaller values when a new one arrives) and the front (when the oldest index slides out of the window). **Why indices, not values?** From an index you get both the value (`a[idx]`) and whether it is still in the window (`idx > i - k`).
+
+**The 4 steps for each new element `a[i]`:**
+1. Front: if its index `<= i - k`, it left the window, so drop it.
+2. Back: while `a[back] <= a[i]`, drop it.
+3. Push `i` at the back.
+4. If `i >= k - 1`, the answer for this window is `a[front]`.
+
+**Trace** (`a = [1, 3, -1, -3, 5, 3, 6, 7]`, `k = 3`; deque shown as `index:value`, front on the left):
+
+| i | a[i] | What happens | Deque | Answer |
+|---|---|---|---|---|
+| 0 | 1 | push | `0:1` | |
+| 1 | 3 | 1 ≤ 3 dropped, push | `1:3` | |
+| 2 | -1 | nothing to drop, push | `1:3, 2:-1` | 3 |
+| 3 | -3 | nothing to drop, push | `1:3, 2:-1, 3:-3` | 3 |
+| 4 | 5 | front idx 1 ≤ 4-3 left the window; -3, -1 ≤ 5 dropped; push | `4:5` | 5 |
+| 5 | 3 | 5 > 3, keep; push | `4:5, 5:3` | 5 |
+| 6 | 6 | 3, 5 ≤ 6 dropped; push | `6:6` | 6 |
+| 7 | 7 | 6 ≤ 7 dropped; push | `7:7` | 7 |
+
+Result: `[3, 3, 5, 5, 6, 7]`. Each index enters once and leaves at most once, so the whole run is **O(n)**.
+
+**C implementation** (tested against brute force on 20 000 random arrays with ASan/UBSan). The deque is a ring buffer with free-running `head`/`tail` counters, same trick as the UART buffer; the back end also moves backwards with `tail--`. It holds at most `k` indices, so `DQ_CAP >= k` is enough and there is no `malloc`:
+```c
+#define DQ_CAP  64u                 /* power of two, k must be <= DQ_CAP */
+#define DQ_MASK (DQ_CAP - 1u)
+
+/* out[] needs n-k+1 slots. Returns the number written (0 on bad input). */
+int sliding_max(const int *a, int n, int k, int *out)
+{
+    if (a == NULL || out == NULL || k <= 0 || k > n || (uint32_t)k > DQ_CAP)
+        return 0;
+
+    int dq[DQ_CAP];                 /* stores INDICES, not values */
+    uint32_t head = 0, tail = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (tail != head && dq[head & DQ_MASK] <= i - k)             /* 1) front left the window */
+            head++;
+        while (tail != head && a[dq[(tail - 1u) & DQ_MASK]] <= a[i]) /* 2) drop smaller from the back */
+            tail--;
+        dq[tail & DQ_MASK] = i;                                      /* 3) push new index */
+        tail++;
+        if (i >= k - 1)                                              /* 4) window full: answer */
+            out[i - k + 1] = a[dq[head & DQ_MASK]];
+    }
+    return n - k + 1;
+}
+```
+For a **minimum** window, flip the comparison in step 2 (`>=` instead of `<=`).
 **Cost:** O(n) total. (A heap would be O(n log n) and needs lazy deletion.)
 
-- **Example A: Sliding Window Maximum.**
+- **Example A: Sliding Window Maximum.** Exactly the trace and code above.
 - **Example B (embedded): Peak current over the last 100 ms.** Same deque, window defined by timestamps instead of count.
 
 ## 12. "Top K / K-th largest or smallest"
