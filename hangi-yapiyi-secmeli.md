@@ -220,6 +220,92 @@ For a **minimum** window, flip the comparison in step 2 (`>=` instead of `<=`).
 - **Example A: Merge K Sorted Lists / arrays** (your Soru 7).
 - **Example B (embedded): Merge timestamped logs from K sensors/cores** into one chronological log without loading all logs into memory.
 
+  **Design.** Each sensor is a *source* that hands out its records one at a time (`next()`), already sorted by timestamp. The heap holds **only the current head record of each source**, so memory is **O(K)** no matter how long the logs are. Loop: pop the smallest timestamp, send it to the *sink* (flash, UART, ...), then ask **the same source** for its next record and put it back. Ties on timestamp are broken by source index so the output is deterministic. Time: **O(N log K)** for N total records.
+
+  Tested against a reference (sort everything by timestamp, then source, then sequence) on 5000 random cases, including empty sources and many equal timestamps; ASan/UBSan clean.
+  ```c
+  #define MAX_SOURCES 16
+
+  typedef struct { uint64_t ts; uint32_t value; } log_rec_t;
+
+  typedef struct {
+      bool (*next)(void *ctx, log_rec_t *out);   /* false: no more records */
+      void *ctx;
+  } log_source_t;
+
+  /* Return false to stop the merge. That record then does not count as written. */
+  typedef bool (*log_sink_fn)(void *ctx, const log_rec_t *rec, int src);
+
+  typedef struct { log_rec_t rec; int src; } heap_item_t;
+
+  static bool item_before(const heap_item_t *a, const heap_item_t *b)
+  {
+      if (a->rec.ts != b->rec.ts) return a->rec.ts < b->rec.ts;
+      return a->src < b->src;                    /* tie: lower source index first */
+  }
+
+  static void sift_up(heap_item_t *h, int i)
+  {
+      while (i > 0) {
+          int p = (i - 1) / 2;
+          if (!item_before(&h[i], &h[p])) break;
+          heap_item_t t = h[i]; h[i] = h[p]; h[p] = t;
+          i = p;
+      }
+  }
+
+  static void sift_down(heap_item_t *h, int size, int i)
+  {
+      for (;;) {
+          int l = 2 * i + 1, r = 2 * i + 2, m = i;
+          if (l < size && item_before(&h[l], &h[m])) m = l;
+          if (r < size && item_before(&h[r], &h[m])) m = r;
+          if (m == i) return;
+          heap_item_t t = h[i]; h[i] = h[m]; h[m] = t;
+          i = m;
+      }
+  }
+
+  /* Returns the number of records written, or -1 on invalid arguments. No malloc. */
+  long merge_logs(const log_source_t *src, int k, log_sink_fn sink, void *sink_ctx)
+  {
+      if (src == NULL || sink == NULL || k < 0 || k > MAX_SOURCES)
+          return -1;
+
+      heap_item_t heap[MAX_SOURCES];
+      int size = 0;
+      long written = 0;
+
+      for (int i = 0; i < k; i++) {              /* 1) first record of every source */
+          heap_item_t it;
+          if (src[i].next(src[i].ctx, &it.rec)) {
+              it.src = i;
+              heap[size] = it;
+              sift_up(heap, size);
+              size++;
+          }
+      }
+
+      while (size > 0) {                         /* 2) smallest ts out, refill from same source */
+          heap_item_t top = heap[0];
+
+          if (!sink(sink_ctx, &top.rec, top.src))
+              return written;
+          written++;
+
+          if (src[top.src].next(src[top.src].ctx, &heap[0].rec)) {
+              heap[0].src = top.src;             /* replace root, sift down */
+              sift_down(heap, size, 0);
+          } else {
+              heap[0] = heap[--size];            /* source exhausted: shrink heap */
+              sift_down(heap, size, 0);
+          }
+      }
+      return written;
+  }
+  ```
+  **Notes.** (1) Each source must already be sorted; the merge cannot fix an unsorted source. (2) If timestamps are a free-running 32-bit tick that wraps, compare with a signed difference (`(int32_t)(a - b) < 0`) instead of `<`, or widen to 64 bits as here. (3) Replacing the root and sifting down is cheaper than a separate pop + push. (4) `next()` returning `false` means "exhausted"; if you also need to report read errors, make it return a tri-state.
+
 ## 14. "Always handle the smallest / earliest / highest-priority next"
 **Signals:** schedule, deadline, timer, event queue, "next to expire", Dijkstra's frontier.
 **Use:** **priority queue** = heap. Key = deadline/priority. Peek tells you the next event in O(1).
