@@ -1,0 +1,482 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2800" height="2000" viewBox="0 0 2800 2000" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker></defs>
+<rect width="2800" height="2000" fill="#eef2f6"/>
+<text x="40" y="52" font-size="34" fill="#1b2530" text-anchor="start" font-weight="700">Battery-powered smart security camera: motion detection design</text>
+<text x="40" y="82" font-size="17" fill="#56616d" text-anchor="start">Reference design. All numbers are planning assumptions to verify on real hardware.</text>
+<rect x="1440" y="28" width="30" height="30" rx="6" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2.5"/>
+<text x="1480" y="50" font-size="19" fill="#1b2530" text-anchor="start">Always-on, low power</text>
+<rect x="1740" y="28" width="30" height="30" rx="6" fill="#e9ebee" stroke="#6b7480" stroke-width="2.5"/>
+<text x="1780" y="50" font-size="19" fill="#1b2530" text-anchor="start">Powered only during an event or live view</text>
+<rect x="2210" y="28" width="30" height="30" rx="6" fill="#dcebff" stroke="#2f6fdd" stroke-width="2.5"/>
+<text x="2250" y="50" font-size="19" fill="#1b2530" text-anchor="start">External systems</text>
+<rect x="40" y="105" width="1010" height="410" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="58" y="136" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Requirements &amp; assumptions</text>
+<rect x="55" y="150" width="520" height="355" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="66" y="178.0" font-size="20" fill="#1b2530" text-anchor="start" font-weight="700">Requirements</text>
+<text x="66" y="203.4" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="79" y="203.4" font-size="15.5" fill="#1b2530" text-anchor="start">Outdoor, wall-mounted; 1080p video + IR night vision; removable 6000</text>
+<text x="79" y="222.62" font-size="15.5" fill="#1b2530" text-anchor="start">mAh battery</text>
+<text x="66" y="243.84" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="79" y="243.84" font-size="15.5" fill="#1b2530" text-anchor="start">Motion → record 10–30 s clip → upload → push to phone; live view</text>
+<text x="79" y="263.06" font-size="15.5" fill="#1b2530" text-anchor="start">any time</text>
+<text x="66" y="284.28" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="79" y="284.28" font-size="15.5" fill="#1b2530" text-anchor="start">Timing: motion → first frame ≤ 1 s; → notification ≤ 5 s; live view ≤ 5 s</text>
+<text x="66" y="305.5" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="79" y="305.5" font-size="15.5" fill="#1b2530" text-anchor="start">Battery life ≥ 6 months at 20 real events per day</text>
+<text x="66" y="326.72" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="79" y="326.72" font-size="15.5" fill="#1b2530" text-anchor="start">False alarms: people only; zones, sensitivity, schedules</text>
+<text x="66" y="347.94000000000005" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="79" y="347.94000000000005" font-size="15.5" fill="#1b2530" text-anchor="start">Wi-Fi 2.4 GHz; BLE setup; −20 to +50 °C; millions of devices; secure</text>
+<text x="79" y="367.1600000000001" font-size="15.5" fill="#1b2530" text-anchor="start">OTA</text>
+<rect x="590" y="150" width="445" height="355" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="601" y="178.0" font-size="20" fill="#1b2530" text-anchor="start" font-weight="700">Assumptions</text>
+<text x="601" y="203.4" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="614" y="203.4" font-size="15.5" fill="#1b2530" text-anchor="start">Usable battery = 80% of 6000 = 4800 mAh (cold, cut-off,</text>
+<text x="614" y="222.62" font-size="15.5" fill="#1b2530" text-anchor="start">aging)</text>
+<text x="601" y="243.84" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="614" y="243.84" font-size="15.5" fill="#1b2530" text-anchor="start">Video: 1080p H.264, about 2 Mbit/s (0.25 MB/s)</text>
+<text x="601" y="265.06" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="614" y="265.06" font-size="15.5" fill="#1b2530" text-anchor="start">Active current (SoC + sensor + Wi-Fi TX) ≈ 300 mA</text>
+<text x="601" y="286.28" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="614" y="286.28" font-size="15.5" fill="#1b2530" text-anchor="start">Real event = 10 s clip + 2 s wake/close = 12 s awake</text>
+<text x="601" y="307.5" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="614" y="307.5" font-size="15.5" fill="#1b2530" text-anchor="start">Rejected false wake ≈ 2 s awake</text>
+<text x="601" y="328.72" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="614" y="328.72" font-size="15.5" fill="#1b2530" text-anchor="start">Out of scope: cloud internals, app UI, ML training (black</text>
+<text x="614" y="347.94000000000005" font-size="15.5" fill="#1b2530" text-anchor="start">boxes)</text>
+<rect x="1070" y="105" width="1090" height="410" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="1088" y="136" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Power budget (per day)</text>
+<rect x="1082" y="150" width="656" height="33" rx="6" fill="#e7ecf2" stroke="#e7ecf2" stroke-width="0"/>
+<text x="1090" y="173" font-size="16" fill="#56616d" text-anchor="start" font-weight="700">State</text>
+<text x="1360" y="173" font-size="16" fill="#56616d" text-anchor="start" font-weight="700">Calculation</text>
+<text x="1722" y="173" font-size="16" fill="#56616d" text-anchor="end" font-weight="700">mAh/day</text>
+<text x="1090" y="206" font-size="16" fill="#1b2530" text-anchor="start">Sleep floor (MCU + PIR + PMIC)</text>
+<text x="1360" y="206" font-size="16" fill="#1b2530" text-anchor="start">0.025 mA × 24 h</text>
+<text x="1722" y="206" font-size="16" fill="#1b2530" text-anchor="end">0.6</text>
+<rect x="1082" y="216" width="656" height="33" rx="4" fill="#e3eefc" stroke="#e3eefc" stroke-width="0"/>
+<text x="1090" y="239" font-size="16" fill="#1b2530" text-anchor="start">Wi-Fi standby (long DTIM)</text>
+<text x="1360" y="239" font-size="16" fill="#1b2530" text-anchor="start">0.15 mA × 24 h</text>
+<text x="1722" y="239" font-size="16" fill="#1b2530" text-anchor="end">3.6</text>
+<rect x="1082" y="249" width="656" height="33" rx="4" fill="#ffe9cf" stroke="#ffe9cf" stroke-width="0"/>
+<text x="1090" y="272" font-size="16" fill="#1b2530" text-anchor="start">Real events</text>
+<text x="1360" y="272" font-size="16" fill="#1b2530" text-anchor="start">20 × 12 s × 300 mA</text>
+<text x="1722" y="272" font-size="16" fill="#1b2530" text-anchor="end" font-weight="700">20.0</text>
+<text x="1090" y="305" font-size="16" fill="#1b2530" text-anchor="start">Rejected false wakes</text>
+<text x="1360" y="305" font-size="16" fill="#1b2530" text-anchor="start">5 × 2 s × 300 mA</text>
+<text x="1722" y="305" font-size="16" fill="#1b2530" text-anchor="end">0.8</text>
+<text x="1090" y="338" font-size="16" fill="#1b2530" text-anchor="start">Live view</text>
+<text x="1360" y="338" font-size="16" fill="#1b2530" text-anchor="start">~2 × 30 s per week at 400 mA</text>
+<text x="1722" y="338" font-size="16" fill="#1b2530" text-anchor="end">1.0</text>
+<text x="1090" y="371" font-size="16" fill="#1b2530" text-anchor="start">Maintenance (check-ins, logs, OTA)</text>
+<text x="1360" y="371" font-size="16" fill="#1b2530" text-anchor="start">estimate</text>
+<text x="1722" y="371" font-size="16" fill="#1b2530" text-anchor="end">0.5</text>
+<line x1="1082" y1="381" x2="1738" y2="381" stroke="#1b2530" stroke-width="2"/>
+<text x="1090" y="406" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">TOTAL</text>
+<text x="1722" y="406" font-size="17" fill="#1b2530" text-anchor="end" font-weight="700">~26.5</text>
+<rect x="1082.0" y="429" width="495.1" height="30" fill="#e08a3c"/>
+<text x="1329.5471698113208" y="450" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">Events 75%</text>
+<rect x="1577.1" y="429" width="89.1" height="30" fill="#5b8fd9"/>
+<text x="1621.6528301886792" y="450" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">Wi-Fi 14%</text>
+<rect x="1666.2" y="429" width="24.8" height="30" fill="#9aa5b1"/>
+<rect x="1691.0" y="429" width="19.8" height="30" fill="#b7c0ca"/>
+<rect x="1710.8" y="429" width="14.9" height="30" fill="#cfd6de"/>
+<rect x="1725.6" y="429" width="12.4" height="30" fill="#dfe4ea"/>
+<text x="1738" y="481" font-size="14" fill="#56616d" text-anchor="end">rest of the day ≈ 11%</text>
+<text x="1082" y="481" font-size="14" fill="#56616d" text-anchor="start">Share of the 26.5 mAh/day budget</text>
+<rect x="1790" y="150" width="355" height="120" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="1801" y="178.0" font-size="20" fill="#1b2530" text-anchor="start" font-weight="700">Battery life</text>
+<text x="1801" y="203.4" font-size="16" fill="#56616d" text-anchor="start">•</text>
+<text x="1814" y="203.4" font-size="16" fill="#1b2530" text-anchor="start">4800 mAh ÷ 26.5 mAh/day ≈ 181 days ≈ 6</text>
+<text x="1814" y="223.24" font-size="16" fill="#1b2530" text-anchor="start">months: meets the target</text>
+<rect x="1790" y="280" width="355" height="225" rx="9" fill="#fff3cd" stroke="#c99a00" stroke-width="2"/>
+<text x="1801" y="308.0" font-size="20" fill="#1b2530" text-anchor="start" font-weight="700">Key insight</text>
+<text x="1801" y="333.4" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1814" y="333.4" font-size="15" fill="#1b2530" text-anchor="start">Events are ~75% of the budget: +1 mAh/day</text>
+<text x="1814" y="352.0" font-size="15" fill="#1b2530" text-anchor="start">per extra real event, +0.17 per false wake</text>
+<text x="1801" y="372.6" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1814" y="372.6" font-size="15" fill="#1b2530" text-anchor="start">Biggest lever = fewer and shorter wake-ups, not</text>
+<text x="1814" y="391.20000000000005" font-size="15" fill="#1b2530" text-anchor="start">sleep current</text>
+<text x="1801" y="411.80000000000007" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1814" y="411.80000000000007" font-size="15" fill="#1b2530" text-anchor="start">Wi-Fi standby is #2: it buys live view; its interval</text>
+<text x="1814" y="430.4000000000001" font-size="15" fill="#1b2530" text-anchor="start">is a trade-off</text>
+<rect x="40" y="535" width="2120" height="370" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="58" y="566" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">System context</text>
+<rect x="1130" y="541" width="1010" height="30" rx="6" fill="#ffffff" stroke="#8a95a3" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="1140" y="562" font-size="14" fill="#56616d" text-anchor="start">Alternative: hub with low-power radio (Blink-style). Pays off only if camera–hub link is much cheaper than Wi-Fi.</text>
+<rect x="60" y="585" width="220" height="120" rx="9" fill="#ffffff" stroke="#8a95a3" stroke-width="2"/>
+<text x="71" y="612.15" font-size="19" fill="#1b2530" text-anchor="start" font-weight="700">Camera device</text>
+<text x="71" y="636.3299999999999" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="84" y="636.3299999999999" font-size="15" fill="#1b2530" text-anchor="start">PIR + MCU + SoC + Wi-Fi</text>
+<text x="71" y="656.93" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="84" y="656.93" font-size="15" fill="#1b2530" text-anchor="start">see hardware panel below</text>
+<rect x="410" y="585" width="170" height="120" rx="9" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="421" y="612.15" font-size="19" fill="#1b2530" text-anchor="start" font-weight="700">Home router</text>
+<text x="421" y="636.3299999999999" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="434" y="636.3299999999999" font-size="15" fill="#1b2530" text-anchor="start">NAT blocks</text>
+<text x="434" y="654.93" font-size="15" fill="#1b2530" text-anchor="start">unsolicited inbound</text>
+<text x="434" y="673.53" font-size="15" fill="#1b2530" text-anchor="start">traffic</text>
+<rect x="1080" y="585" width="280" height="120" rx="9" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="1091" y="612.15" font-size="19" fill="#1b2530" text-anchor="start" font-weight="700">Cloud (black box)</text>
+<text x="1091" y="636.3299999999999" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1104" y="636.3299999999999" font-size="15" fill="#1b2530" text-anchor="start">MQTT, upload, media relay</text>
+<text x="1091" y="656.93" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1104" y="656.93" font-size="15" fill="#1b2530" text-anchor="start">device registry, OTA service</text>
+<rect x="1550" y="585" width="190" height="120" rx="9" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="1561" y="612.15" font-size="19" fill="#1b2530" text-anchor="start" font-weight="700">Push service</text>
+<text x="1561" y="636.3299999999999" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1574" y="636.3299999999999" font-size="15" fill="#1b2530" text-anchor="start">APNs / FCM</text>
+<rect x="1910" y="585" width="230" height="120" rx="9" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="1921" y="612.15" font-size="19" fill="#1b2530" text-anchor="start" font-weight="700">Phone app</text>
+<text x="1921" y="636.3299999999999" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1934" y="636.3299999999999" font-size="15" fill="#1b2530" text-anchor="start">notifications, live view,</text>
+<text x="1934" y="654.93" font-size="15" fill="#1b2530" text-anchor="start">settings</text>
+<path d="M 282 645 L 408 645" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="345" y="635" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Wi-Fi 2.4 GHz</text>
+<path d="M 582 606 L 1078 606" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="830" y="601" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Persistent MQTT/TLS: events, status, commands (camera opens it outbound)</text>
+<path d="M 582 636 L 1078 636" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="830" y="631" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Clip upload, HTTPS/TLS</text>
+<path d="M 1078 666 L 582 666" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="830" y="661" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Wake command, over the same MQTT connection</text>
+<path d="M 1078 696 L 582 696" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="830" y="691" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Signed OTA image</text>
+<path d="M 1362 645 L 1548 645" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1455" y="635" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Motion notification</text>
+<path d="M 1742 645 L 1908 645" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1825" y="635" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">push</text>
+<path d="M 1930 705 L 1930 740 L 1220 740 L 1220 706" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="1575" y="734" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">Live view: request →, ← live stream via media relay (WebRTC-style)</text>
+<path d="M 170 705 L 170 776 L 2060 776 L 2060 706" fill="none" stroke="#1b2530" stroke-width="2.4" stroke-dasharray="8 6" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="1115" y="770" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">First-time setup over BLE (Wi-Fi credentials)</text>
+<text x="60" y="812" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">Live view flow</text>
+<rect x="60" y="822" width="270" height="72" rx="8" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="195.0" y="848" font-size="15.5" fill="#1b2530" text-anchor="middle">Phone asks cloud</text>
+<path d="M 332 858 L 364 858" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<rect x="366" y="822" width="270" height="72" rx="8" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="501.0" y="848" font-size="15.5" fill="#1b2530" text-anchor="middle">Wake message on the existing</text>
+<text x="501.0" y="868" font-size="15.5" fill="#1b2530" text-anchor="middle">MQTT connection</text>
+<path d="M 638 858 L 670 858" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<rect x="672" y="822" width="270" height="72" rx="8" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="807.0" y="848" font-size="15.5" fill="#1b2530" text-anchor="middle">Wi-Fi chip hears it at the next DTIM</text>
+<path d="M 944 858 L 976 858" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<rect x="978" y="822" width="270" height="72" rx="8" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="1113.0" y="848" font-size="15.5" fill="#1b2530" text-anchor="middle">GPIO host-wake → MCU powers</text>
+<text x="1113.0" y="868" font-size="15.5" fill="#1b2530" text-anchor="middle">the SoC</text>
+<path d="M 1250 858 L 1282 858" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<rect x="1284" y="822" width="270" height="72" rx="8" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1419.0" y="848" font-size="15.5" fill="#1b2530" text-anchor="middle">SoC starts the stream</text>
+<rect x="1596" y="822" width="544" height="72" rx="9" fill="#fff3cd" stroke="#c99a00" stroke-width="2"/>
+<text x="1605" y="844.6" font-size="16" fill="#1b2530" text-anchor="start" font-weight="700">Latency budget &lt; 5 s</text>
+<text x="1605" y="865.12" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="1618" y="865.12" font-size="14.5" fill="#1b2530" text-anchor="start">DTIM ≤ ~1 s + SoC wake ~0.7 s + stream setup 1–2 s</text>
+<rect x="40" y="925" width="2120" height="560" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="58" y="956" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Device hardware &amp; power domains</text>
+<rect x="900" y="933" width="1245" height="36" rx="8" fill="#fff3cd" stroke="#c99a00" stroke-width="2"/>
+<text x="1522" y="957" font-size="19" fill="#1b2530" text-anchor="middle" font-weight="700">RULE: video goes SoC → Wi-Fi, never through the low-power MCU.</text>
+<rect x="60" y="985" width="880" height="485" rx="12" fill="#f0faf2" stroke="#2f8f5b" stroke-width="2.5" stroke-dasharray="10 6"/>
+<text x="76" y="1010" font-size="16" fill="#237248" text-anchor="start" font-weight="700">ALWAYS-ON DOMAIN (low power)</text>
+<rect x="1040" y="985" width="600" height="485" rx="12" fill="#f6f7f8" stroke="#6b7480" stroke-width="2.5" stroke-dasharray="10 6"/>
+<text x="1056" y="1010" font-size="16" fill="#4f5863" text-anchor="start" font-weight="700">EVENT / LIVE-VIEW DOMAIN (switched off otherwise)</text>
+<rect x="80" y="1030" width="210" height="80" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="91" y="1055.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">PIR motion sensor</text>
+<text x="91" y="1077.19" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="104" y="1077.19" font-size="14.5" fill="#1b2530" text-anchor="start">~1–10 µA</text>
+<rect x="80" y="1160" width="210" height="100" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="91" y="1185.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">Battery + PMIC</text>
+<text x="91" y="1207.19" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="104" y="1207.19" font-size="14.5" fill="#1b2530" text-anchor="start">6000 mAh; regulators</text>
+<rect x="80" y="1300" width="210" height="95" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="91" y="1325.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">Fuel gauge</text>
+<text x="91" y="1347.19" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="104" y="1347.19" font-size="14.5" fill="#1b2530" text-anchor="start">battery %, temperature</text>
+<rect x="400" y="1030" width="240" height="410" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="411" y="1057.15" font-size="19" fill="#1b2530" text-anchor="start" font-weight="700">Low-power MCU</text>
+<text x="411" y="1081.3300000000002" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1081.3300000000002" font-size="15.5" fill="#1b2530" text-anchor="start">= power manager</text>
+<text x="411" y="1102.5500000000002" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1102.5500000000002" font-size="15.5" fill="#1b2530" text-anchor="start">deep sleep, a few µA</text>
+<text x="411" y="1123.7700000000002" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1123.7700000000002" font-size="15.5" fill="#1b2530" text-anchor="start">PIR pulse filtering</text>
+<text x="411" y="1144.9900000000002" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1144.9900000000002" font-size="15.5" fill="#1b2530" text-anchor="start">SoC power sequencing</text>
+<text x="411" y="1166.2100000000003" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1166.2100000000003" font-size="15.5" fill="#1b2530" text-anchor="start">battery monitor</text>
+<text x="411" y="1187.4300000000003" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1187.4300000000003" font-size="15.5" fill="#1b2530" text-anchor="start">watchdog over the SoC</text>
+<text x="411" y="1208.6500000000003" font-size="15.5" fill="#56616d" text-anchor="start">•</text>
+<text x="424" y="1208.6500000000003" font-size="15.5" fill="#1b2530" text-anchor="start">does NOT touch video</text>
+<rect x="730" y="1255" width="200" height="150" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="741" y="1280.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">Wi-Fi + BLE chip</text>
+<text x="741" y="1302.19" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="754" y="1302.19" font-size="14.5" fill="#1b2530" text-anchor="start">standby: keeps</text>
+<text x="754" y="1320.17" font-size="14.5" fill="#1b2530" text-anchor="start">association</text>
+<text x="741" y="1340.15" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="754" y="1340.15" font-size="14.5" fill="#1b2530" text-anchor="start">keepalive offload</text>
+<text x="741" y="1360.13" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="754" y="1360.13" font-size="14.5" fill="#1b2530" text-anchor="start">wake-on-packet</text>
+<rect x="1070" y="1030" width="300" height="60" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1081" y="1055.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">Image sensor (1080p)</text>
+<rect x="1070" y="1122" width="300" height="238" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1081" y="1147.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">Camera SoC (application</text>
+<text x="1081" y="1168.19" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">processor)</text>
+<text x="1081" y="1189.93" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="1094" y="1189.93" font-size="14.5" fill="#1b2530" text-anchor="start">ISP + H.264 encoder</text>
+<text x="1081" y="1209.91" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="1094" y="1209.91" font-size="14.5" fill="#1b2530" text-anchor="start">optional NPU: person detection</text>
+<text x="1081" y="1229.89" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="1094" y="1229.89" font-size="14.5" fill="#1b2530" text-anchor="start">TLS/MQTT, upload manager, OTA client</text>
+<rect x="1070" y="1392" width="300" height="62" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1079" y="1414.6" font-size="16" fill="#1b2530" text-anchor="start" font-weight="700">RAM + flash</text>
+<text x="1079" y="1435.12" font-size="14" fill="#56616d" text-anchor="start">•</text>
+<text x="1092" y="1435.12" font-size="14" fill="#1b2530" text-anchor="start">A/B firmware + clip queue (32 MB ≈ 2 min)</text>
+<rect x="1475" y="1122" width="150" height="150" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1484" y="1144.6" font-size="16" fill="#1b2530" text-anchor="start" font-weight="700">IR night mode</text>
+<text x="1484" y="1165.12" font-size="14" fill="#56616d" text-anchor="start">•</text>
+<text x="1497" y="1165.12" font-size="14" fill="#1b2530" text-anchor="start">IR LEDs</text>
+<text x="1484" y="1184.4799999999998" font-size="14" fill="#56616d" text-anchor="start">•</text>
+<text x="1497" y="1184.4799999999998" font-size="14" fill="#1b2530" text-anchor="start">IR-cut filter</text>
+<text x="1484" y="1203.8399999999997" font-size="14" fill="#56616d" text-anchor="start">•</text>
+<text x="1497" y="1203.8399999999997" font-size="14" fill="#1b2530" text-anchor="start">ambient light</text>
+<text x="1497" y="1221.1999999999996" font-size="14" fill="#1b2530" text-anchor="start">sensor</text>
+<text x="1470" y="1320" font-size="14" fill="#56616d" text-anchor="start" font-style="italic">Powered through switched</text>
+<text x="1470" y="1338" font-size="14" fill="#56616d" text-anchor="start" font-style="italic">rails from the PMIC, enabled</text>
+<text x="1470" y="1356" font-size="14" fill="#56616d" text-anchor="start" font-style="italic">by the MCU.</text>
+<path d="M 292 1070 L 398 1070" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="345" y="1062" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">GPIO IRQ</text>
+<path d="M 398 1210 L 292 1210" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="345" y="1202" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">enable rails</text>
+<path d="M 292 1348 L 398 1348" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="345" y="1340" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">I²C</text>
+<path d="M 728 1330 L 642 1330" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="685" y="1322" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">host-wake</text>
+<path d="M 642 1160 L 1068 1160" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="800" y="1152" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">UART/SPI control + GPIO reset</text>
+<path d="M 932 1335 L 1068 1335" fill="none" stroke="#b4570d" stroke-width="3.4" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="1000" y="1327" font-size="14" fill="#b4570d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">SDIO (video)</text>
+<path d="M 1220 1092 L 1220 1120" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1296" y="1112" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">MIPI CSI-2</text>
+<path d="M 1220 1362 L 1220 1390" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="1290" y="1382" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">SPI/eMMC</text>
+<path d="M 1372 1196 L 1473 1196" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1423" y="1188" font-size="14" fill="#56616d" text-anchor="middle" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">GPIO/PWM</text>
+<text x="1665" y="1010" font-size="16" fill="#56616d" text-anchor="start" font-weight="700">FIRMWARE LAYERS (one per chip)</text>
+<rect x="1665" y="1025" width="475" height="150" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1676" y="1051.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">SoC firmware</text>
+<text x="1676" y="1074.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1074.26" font-size="15" fill="#1b2530" text-anchor="start">Fast-boot Linux or RTOS</text>
+<text x="1676" y="1094.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1094.86" font-size="15" fill="#1b2530" text-anchor="start">capture → encode → detect → upload queue with retry</text>
+<text x="1676" y="1115.4599999999998" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1115.4599999999998" font-size="15" fill="#1b2530" text-anchor="start">MQTT/HTTPS over TLS, OTA client, telemetry</text>
+<rect x="1665" y="1190" width="475" height="130" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="1676" y="1216.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">MCU firmware</text>
+<text x="1676" y="1239.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1239.26" font-size="15" fill="#1b2530" text-anchor="start">RTOS or bare-metal</text>
+<text x="1676" y="1259.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1259.86" font-size="15" fill="#1b2530" text-anchor="start">power state machine, PIR pulse filter</text>
+<text x="1676" y="1280.4599999999998" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1280.4599999999998" font-size="15" fill="#1b2530" text-anchor="start">battery monitor, SoC sequencing, watchdog</text>
+<rect x="1665" y="1335" width="475" height="120" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="1676" y="1361.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">Wi-Fi chip firmware</text>
+<text x="1676" y="1384.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1384.26" font-size="15" fill="#1b2530" text-anchor="start">keepalive offload, wake-on-pattern</text>
+<text x="1676" y="1404.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1689" y="1404.86" font-size="15" fill="#1b2530" text-anchor="start">fast reconnect (cached channel, BSSID, IP)</text>
+<rect x="40" y="1505" width="2120" height="290" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="58" y="1536" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Motion event timeline</text>
+<text x="199.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">t = 0</text>
+<rect x="62" y="1582" width="275" height="135" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="73" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">PIR fires</text>
+<text x="73" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="86" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">2 pulses in a short window</text>
+<text x="73" y="1651.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="86" y="1651.86" font-size="15" fill="#1b2530" text-anchor="start">= motion candidate</text>
+<path d="M 339 1650 L 360 1650" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="499.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">~5 ms</text>
+<rect x="362" y="1582" width="275" height="135" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="373" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">MCU wakes</text>
+<text x="373" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="386" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">checks schedule + battery</text>
+<text x="373" y="1651.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="386" y="1651.86" font-size="15" fill="#1b2530" text-anchor="start">enables SoC power rails</text>
+<path d="M 639 1650 L 660 1650" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="799.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">0.3–0.7 s</text>
+<rect x="662" y="1582" width="275" height="135" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="673" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">SoC resumes</text>
+<text x="673" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="686" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">fast boot; image sensor starts</text>
+<text x="673" y="1651.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="686" y="1651.86" font-size="15" fill="#1b2530" text-anchor="start">frames go to RAM at once, no wait</text>
+<text x="686" y="1670.4599999999998" font-size="15" fill="#1b2530" text-anchor="start">for Wi-Fi</text>
+<path d="M 939 1650 L 960 1650" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1099.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">&lt; 1 s</text>
+<rect x="962" y="1582" width="275" height="135" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="973" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">First frame captured</text>
+<text x="973" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="986" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">requirement ≤ 1 s: met</text>
+<path d="M 1239 1650 L 1260 1650" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1399.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">1–1.5 s</text>
+<rect x="1262" y="1582" width="275" height="135" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1273" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">On-device check</text>
+<text x="1273" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1286" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">motion in zones + person detection</text>
+<text x="1273" y="1651.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1286" y="1651.86" font-size="15" fill="#1b2530" text-anchor="start">ACCEPT: send event over MQTT</text>
+<path d="M 1539 1650 L 1560 1650" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1699.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">&lt; 5 s</text>
+<rect x="1562" y="1582" width="275" height="135" rx="9" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="1573" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">Phone notified</text>
+<text x="1573" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1586" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">cloud → push service → phone</text>
+<text x="1573" y="1651.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1586" y="1651.86" font-size="15" fill="#1b2530" text-anchor="start">requirement ≤ 5 s: met</text>
+<path d="M 1839 1650 L 1860 1650" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="1999.5" y="1574" font-size="20" fill="#1b2530" text-anchor="middle" font-weight="700">10–30 s, then end</text>
+<rect x="1862" y="1582" width="275" height="135" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="1873" y="1608.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">Clip + wrap-up</text>
+<text x="1873" y="1631.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1886" y="1631.26" font-size="15" fill="#1b2530" text-anchor="start">stream/upload while recording</text>
+<text x="1873" y="1651.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1886" y="1651.86" font-size="15" fill="#1b2530" text-anchor="start">finalize, SoC off, MCU deep sleep</text>
+<rect x="662" y="1730" width="575" height="48" rx="8" fill="#e3eefc" stroke="#2f6fdd" stroke-width="2"/>
+<text x="949.5" y="1751" font-size="15.5" fill="#1b2530" text-anchor="middle" font-weight="700">In parallel: Wi-Fi fast reconnect 0.5–2 s</text>
+<text x="949.5" y="1769" font-size="14" fill="#56616d" text-anchor="middle">cached channel, BSSID and IP</text>
+<rect x="1262" y="1730" width="275" height="48" rx="8" fill="#fde7e7" stroke="#c0392b" stroke-width="2"/>
+<text x="1399" y="1751" font-size="14.5" fill="#1b2530" text-anchor="middle">REJECT: SoC off, count a "rejected wake",</text>
+<text x="1399" y="1769" font-size="14.5" fill="#1b2530" text-anchor="middle">back to sleep (no upload)</text>
+<path d="M 1399 1719 L 1399 1728" fill="none" stroke="#c0392b" stroke-width="2.4" marker-end="url(#ah)"/>
+<rect x="1562" y="1730" width="578" height="48" rx="8" fill="#fff3cd" stroke="#c99a00" stroke-width="2"/>
+<text x="1851.0" y="1751" font-size="15.5" fill="#1b2530" text-anchor="middle" font-weight="700">Real event ≈ 12 s awake ≈ 1 mAh</text>
+<text x="1851.0" y="1769" font-size="14.5" fill="#1b2530" text-anchor="middle">Rejected wake ≈ 2 s awake ≈ 0.17 mAh</text>
+<rect x="40" y="1815" width="2120" height="160" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="58" y="1846" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Trade-offs to say out loud  |  Test &amp; observability</text>
+<rect x="60" y="1855" width="258" height="108" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="70" y="1879.025" font-size="16.5" fill="#1b2530" text-anchor="start" font-weight="700">Keepalive / DTIM interval</text>
+<text x="70" y="1900.1550000000002" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="83" y="1900.1550000000002" font-size="15" fill="#1b2530" text-anchor="start">battery life vs live-view latency</text>
+<rect x="330" y="1855" width="258" height="108" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="340" y="1879.025" font-size="16.5" fill="#1b2530" text-anchor="start" font-weight="700">On-device person detection</text>
+<text x="340" y="1900.1550000000002" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="353" y="1900.1550000000002" font-size="15" fill="#1b2530" text-anchor="start">fewer uploads vs extra wake time</text>
+<text x="353" y="1918.755" font-size="15" fill="#1b2530" text-anchor="start">and cost</text>
+<rect x="600" y="1855" width="258" height="108" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="610" y="1879.025" font-size="16.5" fill="#1b2530" text-anchor="start" font-weight="700">Clip length</text>
+<text x="610" y="1900.1550000000002" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="623" y="1900.1550000000002" font-size="15" fill="#1b2530" text-anchor="start">evidence vs battery</text>
+<rect x="870" y="1855" width="258" height="108" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="880" y="1879.025" font-size="16.5" fill="#1b2530" text-anchor="start" font-weight="700">Fast-boot RTOS vs Linux</text>
+<text x="880" y="1900.1550000000002" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="893" y="1900.1550000000002" font-size="15" fill="#1b2530" text-anchor="start">wake latency vs software</text>
+<text x="893" y="1918.755" font-size="15" fill="#1b2530" text-anchor="start">flexibility</text>
+<rect x="1140" y="1855" width="258" height="108" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="1150" y="1879.025" font-size="16.5" fill="#1b2530" text-anchor="start" font-weight="700">Direct Wi-Fi vs hub</text>
+<text x="1150" y="1900.1550000000002" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="1163" y="1900.1550000000002" font-size="15" fill="#1b2530" text-anchor="start">simplicity vs battery life</text>
+<rect x="1660" y="1855" width="485" height="108" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="1670" y="1879.025" font-size="16.5" fill="#1b2530" text-anchor="start" font-weight="700">Test &amp; observability</text>
+<text x="1670" y="1900.1550000000002" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="1683" y="1900.1550000000002" font-size="14.5" fill="#1b2530" text-anchor="start">power analyzer per state; thermal chamber; clip replay; field beta</text>
+<text x="1670" y="1920.1350000000002" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="1683" y="1920.1350000000002" font-size="14.5" fill="#1b2530" text-anchor="start">telemetry: wake reasons, rejected wakes, drain/day</text>
+<rect x="2190" y="105" width="570" height="640" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="2208" y="136" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">False-positive filter funnel</text>
+<rect x="2205" y="150" width="540" height="150" rx="9" fill="#dff3e4" stroke="#2f8f5b" stroke-width="2"/>
+<text x="2216" y="176.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">1. PIR: cheapest, always on</text>
+<text x="2216" y="199.26000000000002" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="199.26000000000002" font-size="15" fill="#1b2530" text-anchor="start">dual-element sensor, pulse counting</text>
+<text x="2216" y="219.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="219.86" font-size="15" fill="#1b2530" text-anchor="start">sensitivity setting + schedules</text>
+<text x="2216" y="240.46" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="240.46" font-size="15" fill="#1b2530" text-anchor="start">rate-limit wake storms (sun on a wall)</text>
+<path d="M 2475 302 L 2475 326" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="2540" y="320" font-size="14" fill="#56616d" text-anchor="start" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">candidate motion</text>
+<rect x="2245" y="330" width="460" height="165" rx="9" fill="#e9ebee" stroke="#6b7480" stroke-width="2"/>
+<text x="2256" y="356.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">2. On-device vision (SoC awake 1–2 s)</text>
+<text x="2256" y="379.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2269" y="379.26" font-size="15" fill="#1b2530" text-anchor="start">frame difference inside user zones</text>
+<text x="2256" y="399.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2269" y="399.86" font-size="15" fill="#1b2530" text-anchor="start">minimum object size and duration</text>
+<text x="2256" y="420.46000000000004" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2269" y="420.46000000000004" font-size="15" fill="#1b2530" text-anchor="start">person detection on the NPU; reject = no upload</text>
+<path d="M 2475 497 L 2475 521" fill="none" stroke="#1b2530" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="2540" y="515" font-size="14" fill="#56616d" text-anchor="start" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">accepted motion</text>
+<rect x="2285" y="525" width="380" height="95" rx="9" fill="#dcebff" stroke="#2f6fdd" stroke-width="2"/>
+<text x="2296" y="551.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">3. Cloud</text>
+<text x="2296" y="574.26" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2309" y="574.26" font-size="15" fill="#1b2530" text-anchor="start">heavier model</text>
+<text x="2296" y="594.86" font-size="15" fill="#56616d" text-anchor="start">•</text>
+<text x="2309" y="594.86" font-size="15" fill="#1b2530" text-anchor="start">user feedback ("not a person") tunes it</text>
+<rect x="2205" y="635" width="540" height="100" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="2216" y="660.45" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">User controls and metrics</text>
+<text x="2216" y="682.19" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="682.19" font-size="14.5" fill="#1b2530" text-anchor="start">zones, sensitivity, people-only, schedules</text>
+<text x="2216" y="702.1700000000001" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="702.1700000000001" font-size="14.5" fill="#1b2530" text-anchor="start">false wakes/day, rejected vs uploaded, false-alarm reports</text>
+<rect x="2190" y="765" width="570" height="600" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="2208" y="796" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Failure modes</text>
+<line x1="2205" y1="804" x2="2745" y2="804" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="824" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">Wi-Fi or cloud down</text>
+<text x="2210" y="843" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">during an event</text>
+<text x="2390" y="824" font-size="15" fill="#1b2530" text-anchor="start">Save clip to the flash queue; retry with backoff;</text>
+<text x="2390" y="843" font-size="15" fill="#1b2530" text-anchor="start">upload oldest first; overwrite oldest when full</text>
+<line x1="2205" y1="880" x2="2745" y2="880" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="900" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">Low battery</text>
+<text x="2390" y="900" font-size="15" fill="#1b2530" text-anchor="start">&lt; 15%: notify, shorter clips, limit live view. &lt; 5%:</text>
+<text x="2390" y="919" font-size="15" fill="#1b2530" text-anchor="start">critical events only</text>
+<line x1="2205" y1="936" x2="2745" y2="936" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="956" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">Brownout on Wi-Fi TX</text>
+<text x="2210" y="975" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">burst</text>
+<text x="2390" y="956" font-size="15" fill="#1b2530" text-anchor="start">Bulk capacitor; check battery voltage before heavy</text>
+<text x="2390" y="975" font-size="15" fill="#1b2530" text-anchor="start">work</text>
+<line x1="2205" y1="992" x2="2745" y2="992" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="1012" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">Power loss during</text>
+<text x="2210" y="1031" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">OTA</text>
+<text x="2390" y="1012" font-size="15" fill="#1b2530" text-anchor="start">A/B slots; verified install; roll back to last good image</text>
+<line x1="2205" y1="1048" x2="2745" y2="1048" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="1068" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">SoC hang</text>
+<text x="2390" y="1068" font-size="15" fill="#1b2530" text-anchor="start">MCU watchdog power-cycles the SoC and logs the</text>
+<text x="2390" y="1087" font-size="15" fill="#1b2530" text-anchor="start">reset reason</text>
+<line x1="2205" y1="1104" x2="2745" y2="1104" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="1124" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">Cold (−20 °C)</text>
+<text x="2390" y="1124" font-size="15" fill="#1b2530" text-anchor="start">Derate capacity; no charging below 0 °C; gauge</text>
+<text x="2390" y="1143" font-size="15" fill="#1b2530" text-anchor="start">temperature compensation</text>
+<line x1="2205" y1="1170" x2="2745" y2="1170" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="1190" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">PIR wake storm</text>
+<text x="2390" y="1190" font-size="15" fill="#1b2530" text-anchor="start">Rate-limit wakes, adaptive threshold, notify the user</text>
+<line x1="2205" y1="1226" x2="2745" y2="1226" stroke="#c4ccd6" stroke-width="1.5"/>
+<text x="2210" y="1246" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">Router or password</text>
+<text x="2210" y="1265" font-size="15.5" fill="#1b2530" text-anchor="start" font-weight="700">changed</text>
+<text x="2390" y="1246" font-size="15" fill="#1b2530" text-anchor="start">Re-provision over BLE from the app</text>
+<rect x="2190" y="1385" width="570" height="590" rx="14" fill="#ffffff" stroke="#c4ccd6" stroke-width="2"/>
+<text x="2208" y="1416" font-size="24" fill="#1b2530" text-anchor="start" font-weight="700">Security &amp; OTA</text>
+<rect x="2205" y="1430" width="540" height="205" rx="9" fill="#f4f6f9" stroke="#c4ccd6" stroke-width="2"/>
+<text x="2216" y="1456.3" font-size="18" fill="#1b2530" text-anchor="start" font-weight="700">Security</text>
+<text x="2216" y="1479.26" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="1479.26" font-size="14.5" fill="#1b2530" text-anchor="start">Secure boot chain: ROM → bootloader → firmware, each signature checked</text>
+<text x="2216" y="1499.24" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="1499.24" font-size="14.5" fill="#1b2530" text-anchor="start">Unique device certificate from the factory; keys in protected storage</text>
+<text x="2216" y="1519.22" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="1519.22" font-size="14.5" fill="#1b2530" text-anchor="start">Mutual TLS to the cloud; video encrypted in transit</text>
+<text x="2216" y="1539.2" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="1539.2" font-size="14.5" fill="#1b2530" text-anchor="start">Signed, encrypted OTA with anti-rollback version check</text>
+<text x="2216" y="1559.18" font-size="14.5" fill="#56616d" text-anchor="start">•</text>
+<text x="2229" y="1559.18" font-size="14.5" fill="#1b2530" text-anchor="start">BLE setup over a paired channel; debug ports locked</text>
+<text x="2210" y="1665" font-size="17" fill="#1b2530" text-anchor="start" font-weight="700">OTA update flow</text>
+<rect x="2205" y="1675" width="540" height="40" rx="7" fill="#ffffff" stroke="#8a95a3" stroke-width="1.8"/>
+<text x="2218" y="1700" font-size="15" fill="#1b2530" text-anchor="start">Check-in or MQTT notice (battery &gt; 30%, no event running)</text>
+<path d="M 2475 1716 L 2475 1727" fill="none" stroke="#1b2530" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="2205" y="1729" width="540" height="40" rx="7" fill="#ffffff" stroke="#8a95a3" stroke-width="1.8"/>
+<text x="2218" y="1754" font-size="15" fill="#1b2530" text-anchor="start">Download in chunks to the inactive slot (resumable)</text>
+<path d="M 2475 1770 L 2475 1781" fill="none" stroke="#1b2530" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="2205" y="1783" width="540" height="40" rx="7" fill="#ffffff" stroke="#8a95a3" stroke-width="1.8"/>
+<text x="2218" y="1808" font-size="15" fill="#1b2530" text-anchor="start">Verify signature + version</text>
+<path d="M 2475 1824 L 2475 1835" fill="none" stroke="#1b2530" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="2205" y="1837" width="540" height="40" rx="7" fill="#ffffff" stroke="#8a95a3" stroke-width="1.8"/>
+<text x="2218" y="1862" font-size="15" fill="#1b2530" text-anchor="start">Switch slot on next boot, run a health check</text>
+<path d="M 2475 1878 L 2475 1889" fill="none" stroke="#1b2530" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="2205" y="1891" width="540" height="40" rx="7" fill="#ffffff" stroke="#8a95a3" stroke-width="1.8"/>
+<text x="2218" y="1916" font-size="15" fill="#1b2530" text-anchor="start">Commit, or roll back automatically</text>
+<rect x="2205" y="1947" width="540" height="40" rx="7" fill="#fff3cd" stroke="#c99a00" stroke-width="1.8"/>
+<text x="2218" y="1965" font-size="14.5" fill="#1b2530" text-anchor="start">Cloud-side staged rollout 1% → 10% → 100%,</text>
+<text x="2218" y="1981" font-size="14.5" fill="#1b2530" text-anchor="start">gated by telemetry (crash rate, battery drain)</text>
+</svg>
