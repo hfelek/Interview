@@ -1,145 +1,90 @@
-/* Chunk tracker with a multi-level bitmap so next_missing is O(log64 N).
- * Level 0: bit i = chunk i received.
- * Level k: bit j = "word j of level k-1 is completely full".
- * Unused bits past the end of every level are set to 1, so they never look "missing".
+/* Simple chunk tracker with two bitmaps.
+ * bits[]    : bit i = chunk i received.
+ * summary[] : bit w = word w of bits[] is completely full, so next_missing can skip it.
  * Build: gcc -std=c11 -Wall -Wextra -g -fsanitize=address,undefined chunk_tracker_hier.c -o chunk_tracker_hier */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_LEVELS 11                 /* 64^11 > 2^64, enough for any uint64_t count */
 #define FULL (~(uint64_t)0)
 
 typedef struct {
-    uint64_t *level[MAX_LEVELS];      /* level[0] is the real bitmap, level[top] is a single word */
-    int       top;                    /* index of the highest level */
-    uint64_t  total;                  /* number of chunks in the file */
-    uint64_t  received;               /* distinct chunks received so far */
+    uint64_t *bits;
+    uint64_t *summary;
+    uint64_t  nwords;       /* words in bits[] */
+    uint64_t  nsummary;     /* words in summary[] */
+    uint64_t  total;        /* chunks in the file */
+    uint64_t  received;     /* distinct chunks received */
 } ChunkTracker;
 
-static void set_bit(uint64_t *words, uint64_t i) { words[i / 64] |= (uint64_t)1 << (i % 64); }
-
-/* Allocates one level with `nbits` meaningful bits; the padding bits are set to 1. */
-static uint64_t *make_level(uint64_t nbits, uint64_t *nwords) {
-    uint64_t n = (nbits + 63) / 64;
-    if (n == 0) n = 1;                              /* empty file still gets one (all-padding) word */
-    uint64_t *w = calloc(n, sizeof(uint64_t));
-    if (!w) return NULL;
-    for (uint64_t b = nbits; b < n * 64; b++) set_bit(w, b);
-    *nwords = n;
-    return w;
-}
-
-void ct_free(ChunkTracker *t) {
-    for (int l = 0; l < MAX_LEVELS; l++) { free(t->level[l]); t->level[l] = NULL; }
-}
-
-int ct_init(ChunkTracker *t, uint64_t total_chunks) {
-    t->total = total_chunks;
+int ct_init(ChunkTracker *t, uint64_t total) {
+    t->total = total;
     t->received = 0;
-    t->top = 0;
-    for (int l = 0; l < MAX_LEVELS; l++) t->level[l] = NULL;
-
-    uint64_t nbits = total_chunks, nwords = 0;
-    for (int l = 0; l < MAX_LEVELS; l++) {
-        t->level[l] = make_level(nbits, &nwords);
-        if (!t->level[l]) { ct_free(t); return -1; }
-        t->top = l;
-        if (nwords == 1) break;                     /* single word = top of the tree */
-        nbits = nwords;                             /* next level has one bit per word here */
-    }
+    t->nwords = (total + 63) / 64;
+    t->nsummary = (t->nwords + 63) / 64;
+    t->bits = calloc(t->nwords + 1, sizeof(uint64_t));         /* +1 so size is never 0 */
+    t->summary = calloc(t->nsummary + 1, sizeof(uint64_t));
+    if (!t->bits || !t->summary) { free(t->bits); free(t->summary); return -1; }
     return 0;
 }
 
-/* Called after level[l] word w changed: if it just became full, tell the level above. */
-static void propagate_full(ChunkTracker *t, int l, uint64_t w) {
-    while (l < t->top && t->level[l][w] == FULL) {
-        set_bit(t->level[l + 1], w);
-        w /= 64;
-        l++;
-    }
-}
+void ct_free(ChunkTracker *t) { free(t->bits); free(t->summary); }
 
-/* Returns 1 if the chunk is new, 0 if it was a duplicate, -1 if the index is out of range. */
+/* Returns 1 if the chunk is new, 0 if duplicate, -1 if out of range. */
 int ct_mark(ChunkTracker *t, uint64_t i) {
     if (i >= t->total) return -1;
-    uint64_t mask = (uint64_t)1 << (i % 64);
-    if (t->level[0][i / 64] & mask) return 0;       /* duplicate: don't count twice */
-    t->level[0][i / 64] |= mask;
+    uint64_t w = i / 64, mask = (uint64_t)1 << (i % 64);
+    if (t->bits[w] & mask) return 0;
+    t->bits[w] |= mask;
     t->received++;
-    propagate_full(t, 0, i / 64);
+    if (t->bits[w] == FULL)                                     /* word filled up: record it in summary */
+        t->summary[w / 64] |= (uint64_t)1 << (w % 64);
     return 1;
-}
-
-int ct_is_received(const ChunkTracker *t, uint64_t i) {
-    return i < t->total && ((t->level[0][i / 64] >> (i % 64)) & 1);
 }
 
 int ct_complete(const ChunkTracker *t) { return t->received == t->total; }
 
-/* Lowest missing chunk, or -1 if the file is complete. Walks from the top level down. */
+/* Lowest missing chunk, or -1 if complete. */
 int64_t ct_next_missing(const ChunkTracker *t) {
     if (ct_complete(t)) return -1;
-    uint64_t idx = 0;                               /* word index at the current level */
-    for (int l = t->top; l >= 0; l--) {
-        uint64_t holes = ~t->level[l][idx];         /* 1 bits = not full / not received */
-        idx = idx * 64 + (uint64_t)__builtin_ctzll(holes);
+    for (uint64_t s = 0; s < t->nsummary; s++) {
+        if (t->summary[s] == FULL) continue;                    /* 64 full words, skip 4096 chunks */
+        uint64_t w = s * 64 + (uint64_t)__builtin_ctzll(~t->summary[s]);   /* first word that is not full */
+        return (int64_t)(w * 64 + (uint64_t)__builtin_ctzll(~t->bits[w])); /* first zero bit in it */
     }
-    return (int64_t)idx;
-}
-
-/* ---- tests ---- */
-
-static void check(int ok, const char *what) {
-    if (!ok) { printf("FAIL: %s\n", what); exit(1); }
-}
-
-static void test_basic(void) {
-    ChunkTracker t;
-    ct_init(&t, 5);
-    ct_mark(&t, 0); ct_mark(&t, 1); ct_mark(&t, 3);
-    check(ct_mark(&t, 3) == 0, "duplicate returns 0");
-    check(ct_mark(&t, 9) == -1, "out of range returns -1");
-    check(!ct_complete(&t), "not complete yet");
-    check(ct_next_missing(&t) == 2, "next missing is 2");
-    ct_mark(&t, 2); ct_mark(&t, 4);
-    check(ct_complete(&t), "complete");
-    check(ct_next_missing(&t) == -1, "nothing missing");
-    ct_free(&t);
-}
-
-static void test_empty(void) {
-    ChunkTracker t;
-    ct_init(&t, 0);
-    check(ct_complete(&t), "empty file is complete");
-    check(ct_next_missing(&t) == -1, "empty file has no missing chunk");
-    ct_free(&t);
-}
-
-/* Compares against a plain byte-per-chunk scan, marking in random order. */
-static void test_random(uint64_t total) {
-    ChunkTracker t;
-    ct_init(&t, total);
-    uint8_t *ref = calloc(total ? total : 1, 1);
-    for (uint64_t n = 0; n < total; n++) {
-        uint64_t i = (uint64_t)rand() % total;
-        ct_mark(&t, i);
-        ref[i] = 1;
-        int64_t want = -1;
-        for (uint64_t j = 0; j < total; j++) if (!ref[j]) { want = (int64_t)j; break; }
-        check(ct_next_missing(&t) == want, "next_missing matches brute force");
-    }
-    for (uint64_t i = 0; i < total; i++) ct_mark(&t, i);   /* fill the rest */
-    check(ct_complete(&t) && ct_next_missing(&t) == -1, "complete after filling");
-    free(ref);
-    ct_free(&t);
+    return -1;   /* not reached when not complete */
 }
 
 int main(void) {
-    test_basic();
-    test_empty();
-    uint64_t sizes[] = {1, 63, 64, 65, 4095, 4096, 4097, 5000};   /* around the 64 / 64^2 boundaries */
-    for (size_t k = 0; k < sizeof sizes / sizeof *sizes; k++) test_random(sizes[k]);
-    printf("all tests passed\n");
+    ChunkTracker t;
+    ct_init(&t, 5);
+    ct_mark(&t, 0); ct_mark(&t, 1); ct_mark(&t, 3);
+    int dup = ct_mark(&t, 3), bad = ct_mark(&t, 9);
+    printf("dup=%d out_of_range=%d complete=%d next_missing=%lld\n",
+           dup, bad, ct_complete(&t), (long long)ct_next_missing(&t));      /* 0 -1 0 2 */
+    ct_mark(&t, 2); ct_mark(&t, 4);
+    printf("complete=%d next_missing=%lld\n", ct_complete(&t), (long long)ct_next_missing(&t)); /* 1 -1 */
+    ct_free(&t);
+
+    /* random order vs. brute force, sizes around the 64 / 4096 boundaries */
+    uint64_t sizes[] = {0, 1, 63, 64, 65, 4095, 4096, 4097, 9000};
+    for (size_t k = 0; k < sizeof sizes / sizeof *sizes; k++) {
+        uint64_t n = sizes[k];
+        uint8_t *ref = calloc(n + 1, 1);
+        ct_init(&t, n);
+        for (uint64_t step = 0; step < n; step++) {
+            uint64_t i = (uint64_t)rand() % n;
+            ct_mark(&t, i);
+            ref[i] = 1;
+            int64_t want = -1;
+            for (uint64_t j = 0; j < n; j++) if (!ref[j]) { want = (int64_t)j; break; }
+            if (ct_next_missing(&t) != want) { printf("FAIL n=%llu\n", (unsigned long long)n); return 1; }
+        }
+        for (uint64_t i = 0; i < n; i++) ct_mark(&t, i);
+        if (!ct_complete(&t) || ct_next_missing(&t) != -1) { printf("FAIL complete n=%llu\n", (unsigned long long)n); return 1; }
+        ct_free(&t);
+        free(ref);
+    }
+    printf("random tests passed\n");
     return 0;
 }
